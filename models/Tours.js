@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
+const validator = require('validator');
 
 const tourSchema = mongoose.Schema(
     {
@@ -7,6 +8,9 @@ const tourSchema = mongoose.Schema(
             type: String,
             unique: true,
             required: [true, 'A tour name must be provided.'],
+            trim: true,
+            // custom validator
+            validate: [validator.isAlpha, 'Tour name cannot contain numerics'],
         },
         slug: String,
         duration: {
@@ -16,6 +20,17 @@ const tourSchema = mongoose.Schema(
         price: {
             type: Number,
             required: [true, 'A price must be provided for a tour'],
+        },
+        discountPrice: {
+            type: Number,
+            validate: {
+                // custom validator
+                validator: function (val) {
+                    return val < this.price;
+                },
+                message:
+                    'Discount price cannot be greater than the actual price!',
+            },
         },
         maxGroupSize: {
             type: Number,
@@ -36,6 +51,7 @@ const tourSchema = mongoose.Schema(
         summary: {
             type: String,
             required: [true, 'A tour summary must be provided.'],
+            trim: true,
         },
         description: String,
         imageCover: {
@@ -96,7 +112,7 @@ tourSchema.pre('aggregate', function (next) {
     // we can add a stage to the aggregate pipeline before the main query
     // gets executed
     this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
-    console.log(this.pipeline());
+    // console.log(this.pipeline());
     next();
 });
 
