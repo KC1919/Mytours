@@ -1,4 +1,17 @@
 const Tour = require('../models/Tours');
+const APIFeatures = require('../utils/apiFeatures');
+
+
+exports.createAlias = (req, res, next) => {
+    try {
+        req.query.limit = '5';
+        req.query.sort = '-ratingsAverage,price';
+        req.query.fields = 'name,duration,diffculty,price,ratingsAverage';
+        next();
+    } catch (error) {
+        console.log('Failed to create alias');
+    }
+};
 
 exports.createTour = async (req, res) => {
     try {
@@ -24,77 +37,14 @@ exports.getTours = async (req, res) => {
     try {
         console.log(req.query);
 
-        //Build query
-
-        //1. FILTERING
-        let queryObj = {
-            ...req.query,
-        };
-        const excludedFields = ['page', 'sort', 'limit', 'fields'];
-        excludedFields.forEach((el) => delete queryObj[el]);
-
-        //2. ADVANCE FILTERING
-        let queryStr = JSON.stringify(queryObj);
-
-        console.log(queryObj);
-        // console.log(queryStr);
-
-        //adding dollar sign in front of filter queries, like gte, lt, lte, gte
-        //these if exists will become, $gt, $gte, $lt, $lte, so that it can be
-        //passed as query parameter as mongoose query
-        queryStr = queryStr.replace(
-            /\b(lte|gte|gt|lt)\b/g,
-            (match) => `$${match}`
-        );
-
-        // console.log(queryStr);
-
-        queryObj = JSON.parse(queryStr);
-
-        console.log(queryObj);
-
-        //Running the built query
-        let query = Tour.find(queryObj);
-
-        //3. SORTING
-        let sortBy;
-
-        //if sort option is present as a query parameter, then rebuild the query with 
-        //appropriate options
-
-        if (req.query.sort) {
-            sortBy = req.query.sort.split(',').join(' ');
-            // console.log(sortBy);
-            query = query.sort(sortBy);
-        } else {
-            query = query.sort('-createdAt');
-        }
-
-        //4. LIMITING FIELDS
-        if (req.query.fields) {
-            const fields = req.query.fields.split(',').join(' ');
-            query = query.select(fields);
-        } else {
-            query = query.select('-__v')
-        }
-
-        //5. PAGINATION
-
-        const page = req.query.page * 1 || 1;
-        const limit = req.query.limit * 1 || 100;
-        const skipCount = (page - 1) * limit;
-
-        query = query.skip(skipCount).limit(limit);
-
-        if (req.query.page) {
-            const totalNumTours = await Tour.countDocuments();
-            if (skipCount >= totalNumTours) {
-                throw new Error('Page does not exists!')
-            }
-        }
+        const features = new APIFeatures(Tour.find(), req.query)
+            .filter()
+            .sort()
+            .limitFields()
+            .paginate();
 
         //EXECUTING QUERY
-        const tours = await query;
+        const tours = await features.query;
 
         return res.status(200).json({
             message: 'Tours data',
@@ -169,3 +119,122 @@ exports.deleteTour = async (req, res) => {
         });
     }
 };
+
+exports.tourStats = async (req, res) => {
+    try {
+        const stats = await Tour.aggregate([{
+                $match: {
+                    ratingsAverage: {
+                        $gte: 4.5,
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        $toUpper: '$difficulty',
+                    },
+                    numRatings: {
+                        $sum: '$ratingsQuantity',
+                    },
+                    numTours: {
+                        $sum: 1,
+                    },
+                    avgRating: {
+                        $avg: '$ratingsAverage',
+                    },
+                    avgPrice: {
+                        $avg: '$price',
+                    },
+                    minPrice: {
+                        $min: '$price',
+                    },
+                    maxPrice: {
+                        $max: '$price',
+                    },
+                },
+            },
+            {
+                $sort: {
+                    avgPrice: 1,
+                },
+            },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                stats,
+            },
+        });
+    } catch (error) {
+        console.log('Failed to fetch stats!', error);
+        res.status(500).json({
+            message: error.message,
+            success: false,
+            error: error,
+        });
+    }
+};
+
+exports.monthlyPlan = async (req, res) => {
+    try {
+        const year = req.params.year * 1;
+        const plan = await Tour.aggregate([{
+                $unwind: '$startDates'
+            },
+            {
+                $match: {
+                    'startDates': {
+                        $gte: new Date(`${year}-01-01`),
+                        $lte: new Date(`${year}-12-31`)
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        $month: '$startDates'
+                    },
+                    numTours: {
+                        $sum: 1
+                    },
+                    tours: {
+                        $push: '$name'
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    'month': '$_id'
+                }
+            },
+            {
+                $sort: {
+                    'numTours': -1
+                }
+            },
+            {
+                $project: {
+                    '_id': 0
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            results: plan.length,
+            data: {
+                plan
+            },
+        });
+
+    } catch (error) {
+        console.log("Failed to get monthly plan details!", error);
+        res.status(500).json({
+            message: "Failed to get monthly plan details!",
+            success: false,
+            error: error.message
+        });
+    }
+}

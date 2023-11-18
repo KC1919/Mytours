@@ -14,10 +14,10 @@ app.use(express.json());
 console.log(process.env.NODE_ENV);
 // console.log(process.env);
 if (process.env.NODE_ENV === 'development') {
-app.use(morgan('dev'));
+    app.use(morgan('dev'));
 }
 
-app.use(tourRouter);
-app.use(userRouter);
+app.use('/api/v1/tours', tourRouter);
+app.use('/api/v1/users', userRouter);
 
 module.exports = app;

@@ -50,6 +50,8 @@ const tourSchema = mongoose.Schema({
     timestamps: true
 });
 
+
+
 const Tour = mongoose.model('Tour', tourSchema);
 
 module.exports = Tour;
