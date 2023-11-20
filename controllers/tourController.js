@@ -1,6 +1,6 @@
 const Tour = require('../models/Tours');
 const APIFeatures = require('../utils/apiFeatures');
-
+const catchAsync = require('../utils/catchAsync');
 
 exports.createAlias = (req, res, next) => {
     try {
@@ -13,8 +13,8 @@ exports.createAlias = (req, res, next) => {
     }
 };
 
-exports.createTour = async (req, res) => {
-    try {
+exports.createTour = catchAsync(async (req, res) => {
+    // try {
         const tour = await Tour.create(req.body);
         return res.status(201).json({
             message: 'Tour created',
@@ -23,15 +23,15 @@ exports.createTour = async (req, res) => {
                 tour,
             },
         });
-    } catch (error) {
-        console.log('Failed to create tour, server error', error);
-        return res.status(500).json({
-            message: 'Failed to create tour, server error',
-            success: false,
-            error: error.message,
-        });
-    }
-};
+    // } catch (error) {
+        // console.log('Failed to create tour, server error', error);
+        // return res.status(500).json({
+        //     message: 'Failed to create tour, server error',
+        //     success: false,
+        //     error: error.message,
+        // });
+    // }
+});
 
 exports.getTours = async (req, res) => {
     try {
@@ -122,7 +122,8 @@ exports.deleteTour = async (req, res) => {
 
 exports.tourStats = async (req, res) => {
     try {
-        const stats = await Tour.aggregate([{
+        const stats = await Tour.aggregate([
+            {
                 $match: {
                     ratingsAverage: {
                         $gte: 4.5,
@@ -180,61 +181,61 @@ exports.tourStats = async (req, res) => {
 exports.monthlyPlan = async (req, res) => {
     try {
         const year = req.params.year * 1;
-        const plan = await Tour.aggregate([{
-                $unwind: '$startDates'
+        const plan = await Tour.aggregate([
+            {
+                $unwind: '$startDates',
             },
             {
                 $match: {
-                    'startDates': {
+                    startDates: {
                         $gte: new Date(`${year}-01-01`),
-                        $lte: new Date(`${year}-12-31`)
-                    }
-                }
+                        $lte: new Date(`${year}-12-31`),
+                    },
+                },
             },
             {
                 $group: {
                     _id: {
-                        $month: '$startDates'
+                        $month: '$startDates',
                     },
                     numTours: {
-                        $sum: 1
+                        $sum: 1,
                     },
                     tours: {
-                        $push: '$name'
-                    }
-                }
+                        $push: '$name',
+                    },
+                },
             },
             {
                 $addFields: {
-                    'month': '$_id'
-                }
+                    month: '$_id',
+                },
             },
             {
                 $sort: {
-                    'numTours': -1
-                }
+                    numTours: -1,
+                },
             },
             {
                 $project: {
-                    '_id': 0
-                }
-            }
+                    _id: 0,
+                },
+            },
         ]);
 
         res.status(200).json({
             success: true,
             results: plan.length,
             data: {
-                plan
+                plan,
             },
         });
-
     } catch (error) {
-        console.log("Failed to get monthly plan details!", error);
+        console.log('Failed to get monthly plan details!', error);
         res.status(500).json({
-            message: "Failed to get monthly plan details!",
+            message: 'Failed to get monthly plan details!',
             success: false,
-            error: error.message
+            error: error.message,
         });
     }
-}
+};
