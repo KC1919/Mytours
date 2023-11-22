@@ -10,7 +10,7 @@ const tourSchema = mongoose.Schema(
             required: [true, 'A tour name must be provided.'],
             trim: true,
             // custom validator
-            validate: [validator.isAlpha, 'Tour name cannot contain numerics'],
+            // validate: [validator.isAlpha, 'Tour name cannot contain numerics'],
         },
         slug: String,
         duration: {
