@@ -2,7 +2,8 @@ const User = require('../models/User');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const { sendEmail } = require('../utils/sendEmail');
 
 const signToken = async (userId) => {
     const token = await jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -12,14 +13,11 @@ const signToken = async (userId) => {
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
-    const newUser = await User.create({
-        name: req.body.name,
-        email: req.body.email,
-        password: req.body.password,
-        passwordConfirm: req.body.passwordConfirm,
-    });
+    const newUser = await User.create(req.body);
 
-    const token = signToken(newUser._id);
+    const token = await signToken(newUser._id);
+
+    newUser.password = undefined;
 
     res.status(201).json({
         message: 'User created',
@@ -81,7 +79,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     // 2) Verification Token
     const decoded = await jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log(decoded);
+    // console.log(decoded);
 
     // 3) Check if user still exist.
 
@@ -109,3 +107,101 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.user = currentUser;
     next();
 });
+
+exports.restrictTo = (...roles) => {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return next(
+                new AppError(
+                    'User not authorized to perform this operation!',
+                    403
+                )
+            );
+        }
+        next();
+    };
+};
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+    // 1) Check if user exists
+    const user = await User.findOne({ email: req.body.email });
+
+    if (!user) {
+        return next(new AppError('User with this email does not exist!', 404));
+    }
+
+    // 2) Generate reset token and save in user document
+
+    const resetToken = user.createPasswordResetToken();
+
+    await user.save({ validateBeforeSave: false });
+
+    // 3) Send email
+
+    const resetURL = `${req.protocol}://${req.get(
+        'host'
+    )}/api/v1/users/resetPassword/${resetToken}`;
+
+    const message = `Forgot your password? Submit a PATCH request with your new password and confirm password to: ${resetURL}.\nIf you didn't forgot your password, please ignore this email!`;
+
+    try {
+        await sendEmail({
+            email: req.body.email,
+            subject: 'Your password reset token, (valid for 10 min)!',
+            message: message,
+        });
+
+        res.status(200).json({
+            status: 'success',
+            success: true,
+            message: 'Token sent to email!',
+        });
+    } catch (error) {
+        console.log(error);
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        return next(
+            new AppError(
+                'Failed to sent password reset email to user. Try again later!',
+                500
+            )
+        );
+    }
+});
+
+exports.resetPassword = async (req, res, next) => {
+    // 1) Get user based on the token.
+    const hashedToken = crypto
+        .createHash('sha256')
+        .update(req.params.token)
+        .digest('hex');
+
+    const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() },
+    });
+
+    // 2) If token has not expired and user exist, then set new password
+    if (!user) {
+        return next(new AppError('Reset token invalid or expired!', 400));
+    }
+
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await user.save({ validateBeforeSave: false });
+    // 3) Update changedPasswordAt property for the user
+    // 4) Log the user in send JWT
+
+    const token = await signToken(user._id);
+
+    res.status(200).json({
+        status: 'success',
+        success: true,
+        token,
+    });
+};
