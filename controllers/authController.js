@@ -5,11 +5,23 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/sendEmail');
 
-const signToken = async (userId) => {
-    const token = await jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+const signToken = (userId) => {
+    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRES_IN,
     });
     return token;
+};
+
+const createSendToken = (user, statusCode, res) => {
+    const token = signToken(user._id);
+
+    res.status(statusCode).json({
+        status: 'success',
+        token,
+        data: {
+            user,
+        },
+    });
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
@@ -48,13 +60,7 @@ exports.login = catchAsync(async (req, res, next) => {
         return next(new AppError('Incorrect email or Password!', 401));
     }
 
-    const token = await signToken(user._id);
-
-    res.status(200).json({
-        status: 'pass',
-        success: true,
-        token,
-    });
+    createSendToken(user, 200, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -171,7 +177,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     }
 });
 
-exports.resetPassword = async (req, res, next) => {
+exports.resetPassword = catchAsync(async (req, res, next) => {
     // 1) Get user based on the token.
     const hashedToken = crypto
         .createHash('sha256')
@@ -197,11 +203,25 @@ exports.resetPassword = async (req, res, next) => {
     // 3) Update changedPasswordAt property for the user
     // 4) Log the user in send JWT
 
-    const token = await signToken(user._id);
+    createSendToken(user, 201, res);
+});
 
-    res.status(200).json({
-        status: 'success',
-        success: true,
-        token,
-    });
-};
+exports.updatePassword = catchAsync(async (req, res, next) => {
+    // 1) Get user from the collection
+    const user = await User.findById(req.user._id).select('+password');
+
+    const currentPass = req.body.currentPassword;
+
+    // 2) Check if is current password is correct or not
+    if (!user || !(await user.checkPassword(currentPass, user.password))) {
+        return next(new AppError('Wrong Password! Please try again.'));
+    }
+
+    // 3) if correct, update the user password with new password
+    user.password = req.body.newPassword;
+    user.passwordConfirm = req.body.passwordConfirm;
+    await user.save();
+
+    // 4) Generate new JWT token and return it to the user
+    createSendToken(user, 201, res);
+});

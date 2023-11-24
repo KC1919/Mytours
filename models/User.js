@@ -3,52 +3,56 @@ const validator = require('validator');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
-const userSchema = mongoose.Schema({
-    name: {
-        type: String,
-        required: [true, 'Please tell us you name.'],
-    },
-    email: {
-        type: String,
-        required: [true, 'Please provide your email.'],
-        unique: true,
-        validate: [validator.isEmail, 'Please provide a valid email!'],
-        lowercase: true,
-    },
-    role: {
-        type: String,
-        enum: ['user', 'guide', 'lead-guide', 'admin'],
-        default: 'user',
-    },
-    photo: {
-        type: String,
-    },
-    password: {
-        type: String,
-        required: [true, 'Please provide a password!'],
-        minLength: 8,
-        select: false,
-    },
-    passwordConfirm: {
-        // Only work on save or create operations
-        type: String,
-        required: [true, 'Please confirm your password!'],
-        minLength: 8,
-        validate: {
-            validator: function (el) {
-                return el === this.password;
+const userSchema = mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: [true, 'Please tell us you name.'],
+        },
+        email: {
+            type: String,
+            required: [true, 'Please provide your email.'],
+            unique: true,
+            validate: [validator.isEmail, 'Please provide a valid email!'],
+            lowercase: true,
+        },
+        role: {
+            type: String,
+            enum: ['user', 'guide', 'lead-guide', 'admin'],
+            default: 'user',
+        },
+        photo: {
+            type: String,
+        },
+        password: {
+            type: String,
+            required: [true, 'Please provide a password!'],
+            minLength: 8,
+            select: false,
+        },
+        passwordConfirm: {
+            // Only work on save or create operations
+            type: String,
+            required: [true, 'Please confirm your password!'],
+            minLength: 8,
+            validate: {
+                // This only works on CREATE and SAVE!!!
+                validator: function (el) {
+                    return el === this.password;
+                },
+                message: 'Passwords do not match!',
             },
-            message: 'Passwords do not match!',
+        },
+        passwordChangedAt: Date,
+        passwordResetToken: {
+            type: String,
+        },
+        passwordResetExpires: {
+            type: Date,
         },
     },
-    passwordChangedAt: Date,
-    passwordResetToken: {
-        type: String,
-    },
-    passwordResetExpires: {
-        type: Date,
-    },
-});
+    { timestamps: true }
+);
 
 userSchema.pre('save', async function (next) {
     // Only run this function if password was modified
@@ -71,6 +75,7 @@ userSchema.pre('save', function (next) {
 });
 
 userSchema.methods.checkPassword = async function (password, userPassword) {
+    // console.log(password, userPassword);
     return await bcrypt.compare(password, userPassword);
 };
 
@@ -90,7 +95,7 @@ userSchema.methods.createPasswordResetToken = function () {
         .update(resetToken)
         .digest('hex');
 
-    console.log(resetToken, this.passwordResetToken);
+    // console.log(resetToken, this.passwordResetToken);
 
     this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
