@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const userController = require('../controllers/userController');
 
 router
     .post('/signup', authController.signup)
@@ -12,6 +13,7 @@ router
         authController.protect,
         authController.updatePassword
     )
+    .patch('/updateMe', authController.protect, userController.updateMe);
 
 router.route('/api/v1/user').get().post();
 
