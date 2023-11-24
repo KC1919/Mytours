@@ -13,6 +13,17 @@ const filterObj = (obj, ...fields) => {
     return newObject;
 };
 
+exports.getUsers = catchAsync(async (req, res, next) => {
+    const users = await User.find();
+    res.status(200).json({
+        status: 'success',
+        success: true,
+        data: {
+            users,
+        },
+    });
+});
+
 exports.updateMe = catchAsync(async (req, res, next) => {
     // If user POSTed password with update request, return an error
     if (req.body.password || req.body.passwordConfirm) {
@@ -34,6 +45,15 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 
     res.status(200).json({
         message: 'User data updated successfully!',
+        success: true,
+        status: 'success',
+    });
+});
+
+exports.deleteMe = catchAsync(async (req, res, next) => {
+    await User.findByIdAndUpdate(req.user._id, { active: false });
+    res.status(204).json({
+        message: 'Profile deleted!',
         success: true,
         status: 'success',
     });

@@ -50,6 +50,10 @@ const userSchema = mongoose.Schema(
         passwordResetExpires: {
             type: Date,
         },
+        active: {
+            type: Boolean,
+            default: true,
+        },
     },
     { timestamps: true }
 );
@@ -71,6 +75,11 @@ userSchema.pre('save', function (next) {
     // be greater than JWT issued time, so in that case our token will be termed invalid
     // so to prevent that, we add a margin of 1 second to password changedAt time
     this.passwordChangedAt = Date.now() - 1000;
+    next();
+});
+
+userSchema.pre(/^find/, function (next) {
+    this.find({ active: { $ne: false } });
     next();
 });
 

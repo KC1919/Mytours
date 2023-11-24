@@ -12,11 +12,11 @@ router
         '/updatePassword',
         authController.protect,
         authController.updatePassword
-    )
-    .patch('/updateMe', authController.protect, userController.updateMe);
+    );
 
-router.route('/api/v1/user').get().post();
-
-router.route('api/v1/user/:id').get().patch().delete();
+router
+    .get('/', userController.getUsers)
+    .patch('/updateMe', authController.protect, userController.updateMe)
+    .delete('/deleteMe', authController.protect, userController.deleteMe);
 
 module.exports = router;
