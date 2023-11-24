@@ -24,14 +24,6 @@ exports.createTour = catchAsync(async (req, res, next) => {
             tour,
         },
     });
-    // } catch (error) {
-    // console.log('Failed to create tour, server error', error);
-    // return res.status(500).json({
-    //     message: 'Failed to create tour, server error',
-    //     success: false,
-    //     error: error.message,
-    // });
-    // }
 });
 
 exports.getTours = catchAsync(async (req, res, next) => {
@@ -55,13 +47,6 @@ exports.getTours = catchAsync(async (req, res, next) => {
             tours,
         },
     });
-    // } catch (error) {
-    //     return res.status(500).json({
-    //         message: 'Failed to fetch tours, server error',
-    //         success: false,
-    //         error: error.message,
-    //     });
-    // }
 });
 
 exports.getTourById = catchAsync(async (req, res, next) => {
@@ -83,13 +68,6 @@ exports.getTourById = catchAsync(async (req, res, next) => {
             status: 'fail',
         });
     }
-    // } catch (error) {
-    //     return res.status(500).json({
-    //         message: 'Failed to fetch tour, server error',
-    //         success: false,
-    //         error: error.message,
-    //     });
-    // }
 });
 
 exports.updateTour = catchAsync(async (req, res, next) => {
@@ -105,13 +83,6 @@ exports.updateTour = catchAsync(async (req, res, next) => {
             tour,
         },
     });
-    // } catch (error) {
-    //     return res.status(500).json({
-    //         message: 'Failed to update tour, server error',
-    //         success: false,
-    //         error: error.message,
-    //     });
-    // }
 });
 
 exports.deleteTour = catchAsync(async (req, res, next) => {
@@ -121,13 +92,6 @@ exports.deleteTour = catchAsync(async (req, res, next) => {
         message: 'Tour deleted',
         success: true,
     });
-    // } catch (error) {
-    //     return res.status(500).json({
-    //         message: 'Failed to delete tour, server error',
-    //         success: false,
-    //         error: error.message,
-    //     });
-    // }
 });
 
 exports.tourStats = catchAsync(async (req, res, next) => {
@@ -178,14 +142,6 @@ exports.tourStats = catchAsync(async (req, res, next) => {
             stats,
         },
     });
-    // } catch (error) {
-    //     console.log('Failed to fetch stats!', error);
-    //     res.status(500).json({
-    //         message: error.message,
-    //         success: false,
-    //         error: error,
-    //     });
-    // }
 });
 
 exports.monthlyPlan = catchAsync(async (req, res, next) => {
@@ -240,12 +196,4 @@ exports.monthlyPlan = catchAsync(async (req, res, next) => {
             plan,
         },
     });
-    // } catch (error) {
-    //     console.log('Failed to get monthly plan details!', error);
-    //     res.status(500).json({
-    //         message: 'Failed to get monthly plan details!',
-    //         success: false,
-    //         error: error.message,
-    //     });
-    // }
 });
