@@ -10,6 +10,7 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
+const hpp = require('hpp');
 
 dotenv.config({
     path: './config/.env',
@@ -48,6 +49,15 @@ app.use(mongoSanitize());
 
 // Protect agains XSS attack
 app.use(xss());
+
+// Prevent parameter pollution, using package hpp i.e (http parameter pollution)
+app.use(
+    hpp({
+        whitelist: [
+            'duration, ratingsAverage, maxGroupSize, price, difficulty, ratingsQuantity',
+        ],
+    })
+);
 
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
